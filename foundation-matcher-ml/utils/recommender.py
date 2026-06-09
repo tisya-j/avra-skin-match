@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 class FoundationRecommender:
-    def __init__(self, master_db_path="data/Foundation_shades.csv", lookup_path="data/Recommendation_lookup.csv"):
+    def __init__(self, master_db_path="foundation-matcher-ml/data/Foundation_shades.csv", lookup_path="foundation-matcher-ml/data/Recommendation_lookup.csv"):
         self.master_db_path = master_db_path
         self.lookup_path = lookup_path
         
