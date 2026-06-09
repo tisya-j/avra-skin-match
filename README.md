@@ -5,6 +5,7 @@ colorFrom: purple
 colorTo: indigo
 sdk: gradio
 sdk_version: 4.44.0
+python_version: 3.12
 app_file: foundation-matcher-ml/app.py
 pinned: false
 license: mit
