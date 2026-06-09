@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import mediapipe.solutions.face_mesh as mp_face_mesh
 
 class SkinExtractor:
     def __init__(self):
