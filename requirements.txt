@@ -1,5 +1,5 @@
 huggingface_hub==0.26.2
 opencv-python-headless
-mediapipe
+mediapipe==0.10.14
 numpy
 pandas
