@@ -1,5 +1,6 @@
 huggingface_hub==0.26.2
 opencv-python-headless
 mediapipe==0.10.14
-numpy
+numpy<2.0.0
 pandas
+pydantic==2.10.6
