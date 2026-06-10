@@ -1,5 +1,6 @@
-pydantic==2.10.6
-opencv-python-headless
-mediapipe==0.10.14
+gradio==5.7.1
+pandas==2.2.2
 numpy<2.0.0
-pandas
+opencv-python-headless==4.8.1.78
+mediapipe==0.10.14
+pydantic==2.10.6
