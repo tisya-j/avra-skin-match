@@ -1,6 +1,6 @@
 ---
 title: Avra Shade Matcher
-emoji: 🧪
+emoji: 💻
 colorFrom: purple
 colorTo: indigo
 sdk: gradio
