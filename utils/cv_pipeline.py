@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
+
 class SkinExtractor:
     def __init__(self):
         # Initialize MediaPipe Face Mesh
@@ -13,23 +14,18 @@ class SkinExtractor:
             min_detection_confidence=0.5
         )
 
-        # Forehead + cheek apple sampling points
+        # Central forehead + under-eye cheek zones
         self.target_landmarks = [
-            123,  # left cheek apple
-            352,  # right cheek apple
-            116,  # inner left cheek
-            345,  # inner right cheek
-            10    # forehead center
+              # Forehead
+            205,  # Left cheek
+            425   # Right cheek
         ]
 
-    def extract_skin_patches(self, image_path, patch_size=24):
+    def extract_skin_patches(self, image_path, patch_size=48):
         """
-        Loads an image, finds facial landmarks, and extracts
-        representative skin patches from the forehead and cheeks.
-
-        Returns:
-            all_skin_pixels : ndarray
-            visual_debug_img : image with sampling boxes drawn
+        Extract representative skin patches from
+        forehead and central cheek regions using
+        larger circular sampling zones.
         """
 
         image = cv2.imread(image_path)
@@ -66,9 +62,38 @@ class SkinExtractor:
             patch = image[y1:y2, x1:x2]
 
             if patch.size > 0:
-                patches.append(patch)
 
-            # Debug visualization
+                mask = np.zeros(
+                    (patch.shape[0], patch.shape[1]),
+                    dtype=np.uint8
+                )
+
+                center = (
+                    patch.shape[1] // 2,
+                    patch.shape[0] // 2
+                )
+
+                radius = min(
+                    patch.shape[0],
+                    patch.shape[1]
+                ) // 2
+
+                cv2.circle(
+                    mask,
+                    center,
+                    radius,
+                    255,
+                    -1
+                )
+
+                circular_pixels = patch[mask == 255]
+
+                if len(circular_pixels) > 0:
+                    patches.append(
+                        circular_pixels.reshape(-1, 3)
+                    )
+
+            # Draw sampling box
             cv2.rectangle(
                 visual_debug_img,
                 (x1, y1),
@@ -77,19 +102,38 @@ class SkinExtractor:
                 2
             )
 
+            # Draw center point
             cv2.circle(
                 visual_debug_img,
                 (cx, cy),
-                3,
+                4,
                 (0, 0, 255),
                 -1
+            )
+
+            # Draw actual sampling circle
+            cv2.circle(
+                visual_debug_img,
+                (cx, cy),
+                patch_size // 2,
+                (255, 255, 0),
+                2
+            )
+
+            # Show landmark ID
+            cv2.putText(
+                visual_debug_img,
+                str(lm_id),
+                (cx + 5, cy),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                1
             )
 
         if not patches:
             return None, visual_debug_img
 
-        all_skin_pixels = np.vstack(
-            [patch.reshape(-1, 3) for patch in patches]
-        )
+        all_skin_pixels = np.vstack(patches)
 
         return all_skin_pixels, visual_debug_img

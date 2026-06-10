@@ -1,56 +1,106 @@
 import cv2
 import numpy as np
 
+
 class ColourAnalyzer:
     def __init__(self):
-        # LAB reference points for undertone classification
+
+        # LAB undertone anchors
         self.undertone_references = {
-            "Cool Pink":      {"A": 6.0,  "B": 4.0},
-            "Cool Neutral":   {"A": 3.5,  "B": 7.0},
-            "Neutral Muted":  {"A": 1.5,  "B": 10.0},
-            "Neutral Warm":   {"A": 2.5,  "B": 13.0},
-            "Warm Golden":    {"A": 4.0,  "B": 18.0},
-            "Olive":          {"A": -1.5, "B": 9.0},
-            "Warm Olive":     {"A": -0.5, "B": 14.0}
+
+            "Cool Pink": {
+                "A": 6.0,
+                "B": 4.0
+            },
+
+            "Cool Neutral": {
+                "A": 3.5,
+                "B": 7.0
+            },
+
+            "Neutral": {
+                "A": 1.5,
+                "B": 10.0
+            },
+
+            "Neutral Warm": {
+                "A": 2.5,
+                "B": 13.0
+            },
+
+            "Warm Golden": {
+                "A": 4.0,
+                "B": 18.0
+            },
+
+            "Olive": {
+                "A": -1.5,
+                "B": 9.0
+            },
+
+            "Warm Olive": {
+                "A": -0.5,
+                "B": 14.0
+            }
         }
 
     def get_dominant_lab(self, skin_pixels):
         """
-        Computes the dominant skin color from pooled skin pixels
-        and converts it to standard LAB coordinates.
+        Computes dominant skin LAB values while rejecting
+        extreme shadows and highlights.
         """
 
         if skin_pixels is None or len(skin_pixels) == 0:
             raise ValueError("Skin pixel matrix is empty or invalid.")
 
-        # Stable median color across all sampled skin regions
-        median_bgr = np.round(
-            np.median(skin_pixels, axis=0)
-        ).astype(np.uint8)
+        # ------------------------------------------
+        # Remove extreme highlights and shadows
+        # ------------------------------------------
 
-        # Convert median pixel to LAB
-        bgr_pixel_img = np.uint8([[median_bgr]])
-        lab_pixel_img = cv2.cvtColor(
-            bgr_pixel_img,
+        brightness = np.mean(skin_pixels, axis=1)
+
+        low_cut = np.percentile(brightness, 20)
+        high_cut = np.percentile(brightness, 80)
+
+        filtered_pixels = skin_pixels[
+            (brightness >= low_cut) &
+            (brightness <= high_cut)
+        ]
+
+        if len(filtered_pixels) == 0:
+            filtered_pixels = skin_pixels
+
+        # ------------------------------------------
+        # Convert ALL filtered pixels to LAB
+        # ------------------------------------------
+
+        lab_pixels = cv2.cvtColor(
+            filtered_pixels.reshape(-1, 1, 3).astype(np.uint8),
             cv2.COLOR_BGR2LAB
-        )
+        ).reshape(-1, 3)
 
-        l_val, a_val, b_val = lab_pixel_img[0][0]
+        l_val = np.median(lab_pixels[:, 0])
+        a_val = np.median(lab_pixels[:, 1])
+        b_val = np.median(lab_pixels[:, 2])
 
-        # Convert OpenCV LAB ranges
+        # ------------------------------------------
+        # Convert OpenCV LAB -> Standard LAB
+        # ------------------------------------------
+
         standard_l = (float(l_val) / 255.0) * 100.0
         standard_a = float(a_val) - 128.0
         standard_b = float(b_val) - 128.0
 
-        # Conservative shadow correction
-        # Only applies to very dark captures where lighting
-        # is likely crushing the true skin value.
+        # ------------------------------------------
+        # Calibration
+        # ------------------------------------------
+
+        standard_l -= 4
+
         if standard_l < 45:
             standard_l += 2
 
-        # Debugging output (optional)
         print(
-            f"Median BGR={median_bgr} | "
             f"L={standard_l:.1f}, "
             f"A={standard_a:.1f}, "
             f"B={standard_b:.1f}"
@@ -60,23 +110,35 @@ class ColourAnalyzer:
 
     def classify_depth(self, l_val):
         """
-        Maps LAB lightness values to skin depth categories.
+        Depth buckets aligned to foundation mapping CSV.
+        Softer transitions than the original version.
         """
 
-        if l_val >= 70:
+        if l_val >= 76:
             return "Fair"
-        elif l_val >= 61:
+
+        elif l_val >= 68:
+            return "Light"
+
+        elif l_val >= 60:
             return "Light-Medium"
-        elif l_val >= 48:
+
+        elif l_val >= 52:
             return "Medium"
-        elif l_val >= 36:
+
+        elif l_val >= 44:
+            return "Medium-Tan"
+
+        elif l_val >= 38:
             return "Tan"
+
         else:
             return "Deep"
 
     def classify_undertone(self, a_val, b_val):
         """
-        Finds nearest undertone anchor using Euclidean distance.
+        Weighted LAB distance.
+        Yellow axis (B) matters more than red-green axis (A).
         """
 
         closest_undertone = None
@@ -85,29 +147,46 @@ class ColourAnalyzer:
         for name, coords in self.undertone_references.items():
 
             distance = (
-                (a_val - coords["A"]) ** 2 +
-                (b_val - coords["B"]) ** 2
+                ((a_val - coords["A"]) * 1.0) ** 2 +
+                ((b_val - coords["B"]) * 1.5) ** 2
             ) ** 0.5
 
             if distance < min_distance:
                 min_distance = distance
                 closest_undertone = name
 
-        return closest_undertone
+        confidence = max(
+            0,
+            min(
+                100,
+                100 - (min_distance * 8)
+            )
+        )
+
+        return closest_undertone, confidence
 
     def process_skin(self, skin_pixels):
 
         L, A, B = self.get_dominant_lab(skin_pixels)
 
         depth = self.classify_depth(L)
-        undertone = self.classify_undertone(A, B)
+
+        undertone, undertone_confidence = (
+            self.classify_undertone(A, B)
+        )
 
         return {
             "L": round(L, 1),
             "A": round(A, 1),
             "B": round(B, 1),
+
             "depth": depth,
-            "undertone": undertone
+
+            "undertone": undertone,
+            "undertone_confidence": round(
+                undertone_confidence,
+                1
+            )
         }
 
 
@@ -116,12 +195,16 @@ if __name__ == "__main__":
     analyzer = ColourAnalyzer()
 
     mock_pixels = np.array(
-        [[115, 145, 160]] * 400
+        [[115, 145, 160]] * 400,
+        dtype=np.uint8
     )
 
-    results = analyzer.process_skin(mock_pixels)
+    results = analyzer.process_skin(
+        mock_pixels
+    )
 
     print("\nTesting colour_analyzer.py pipeline:")
+
     print(
         f"Calculated LAB Values -> "
         f"L: {results['L']}, "
@@ -132,5 +215,6 @@ if __name__ == "__main__":
     print(
         f"Predicted Profile -> "
         f"Depth: {results['depth']} | "
-        f"Undertone: {results['undertone']}"
+        f"Undertone: {results['undertone']} "
+        f"({results['undertone_confidence']}%)"
     )
