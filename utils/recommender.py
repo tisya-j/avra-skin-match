@@ -1,119 +1,213 @@
 import pandas as pd
 import os
 
+
 class FoundationRecommender:
-    def __init__(self, master_db_path="data/Foundation_shades.csv", lookup_path="data/Recommendation_lookup.csv"):
+    def __init__(
+        self,
+        master_db_path="data/Foundation_shades.csv",
+        lookup_path="data/Recommendation_lookup.csv"
+    ):
+
         self.master_db_path = master_db_path
         self.lookup_path = lookup_path
-        
-        # Load the CSV dataframes safely
-        if not os.path.exists(self.master_db_path) or not os.path.exists(self.lookup_path):
+
+        # Verify database files exist
+        if (
+            not os.path.exists(self.master_db_path)
+            or not os.path.exists(self.lookup_path)
+        ):
             raise FileNotFoundError(
-                f" Missing database files. Please verify that '{os.path.basename(self.master_db_path)}' "
-                f"and '{os.path.basename(self.lookup_path)}' exist inside your 'data/' folder."
+                f"Missing database files. Please verify that "
+                f"'{os.path.basename(self.master_db_path)}' and "
+                f"'{os.path.basename(self.lookup_path)}' exist "
+                f"inside the data/ folder."
             )
-            
+
+        # Load CSVs
         self.master_df = pd.read_csv(self.master_db_path)
         self.lookup_df = pd.read_csv(self.lookup_path)
-        
-        # Clean up columns to prevent white-space lookup bugs
-        for df in [self.master_df, self.lookup_df]:
-            df.columns = df.columns.str.strip()
-            
-        # Set shade_id as index on the master database for lightning-fast dictionary mapping
-        self.master_df.set_index('shade_id', inplace=True)
+
+        # Clean column names
+        self.master_df.columns = self.master_df.columns.str.strip()
+        self.lookup_df.columns = self.lookup_df.columns.str.strip()
+
+        # Set index for fast lookups
+        self.master_df.set_index("shade_id", inplace=True)
 
     def get_shade_details(self, shade_id):
-        """Helper to pull full text specs from the master database for clean UI presentation."""
+        """
+        Returns full shade information from the master database.
+        """
+
         if pd.isna(shade_id) or shade_id not in self.master_df.index:
-            return {"brand": "N/A", "shade_code": "N/A", "shade_name": "No clean match found", "notes": ""}
-            
-        # Fetch matching record slice
+            return {
+                "brand": "N/A",
+                "shade_code": "N/A",
+                "shade_name": "No clean match found",
+                "notes": ""
+            }
+
         matched_data = self.master_df.loc[shade_id]
-        
-        # Safety fallback: If duplicate entries exist, select the first entry row safely using .iloc[0]
+
+        # Handle duplicate shade IDs safely
         if isinstance(matched_data, pd.DataFrame):
             row = matched_data.iloc[0]
         else:
             row = matched_data
 
         return {
-            "brand": row['brand'],
-            "shade_code": row['shade_code'],
-            "shade_name": row['shade_name'],
-            "notes": str(row['notes']) if pd.notna(row['notes']) else ""
+            "brand": row["brand"],
+            "shade_code": row["shade_code"],
+            "shade_name": row["shade_name"],
+            "notes": str(row["notes"]) if pd.notna(row["notes"]) else ""
         }
 
     def get_recommendations(self, depth, undertone):
         """
-        Takes the predicted depth and undertone, filters the lookup matrix, 
-        and maps the shade IDs to full product profiles.
-        """
-        # 🎯 EXPLICIT TRUE-CALIBRATION OVERRIDE FOR YOUR LIGHT-MEDIUM COMPLEXION VARIATIONS
-        if depth in ["Light-Medium", "Fair"] and undertone in ["Neutral Muted", "Cool Neutral", "Olive", "Neutral Warm"]:
-            return {
-                "status": "success",
-                "profile": {"depth": depth, "undertone": undertone},
-                "matches": {
-                    "Kay Beauty": {
-                        "brand": "Kay Beauty",
-                        "shade_code": "110N / 120Y",
-                        "shade_name": "Light Neutral / Light Warm-Muted",
-                        "notes": "Matches your actual fair-medium baseline beautifully without orange oxidize weight."
-                    },
-                    "Maybelline Fit Me": {
-                        "brand": "Maybelline Fit Me",
-                        "shade_code": "115 / 120",
-                        "shade_name": "Ivory / Classic Ivory",
-                        "notes": "Perfect brightness levels to balance indoor shadow tracking anomalies."
-                    },
-                    "Lakme Powerplay": {
-                        "brand": "Lakme Powerplay",
-                        "shade_code": "W120",
-                        "shade_name": "Light Ivory",
-                        "notes": "Prevents gray casting while completely maintaining skin brightness."
-                    }
-                }
-            }
+        Returns foundation recommendations based on
+        predicted depth and undertone.
 
-        # Filter the lookup matrix for the exact calculated criteria
+        Uses exact matching first.
+        Falls back to nearest available depth if needed.
+        """
+
+        # Exact profile lookup
         matched_row = self.lookup_df[
-            (self.lookup_df['depth'].str.strip() == depth) & 
-            (self.lookup_df['undertone'].str.strip() == undertone)
+            (self.lookup_df["depth"].str.strip() == depth)
+            &
+            (self.lookup_df["undertone"].str.strip() == undertone)
         ]
-        
-        # 🟢 RESTORED: Handle baseline database mapping fallback if override isn't met
+
+        # If exact match doesn't exist, use nearest depth
         if matched_row.empty:
-            return {"status": "error", "message": f"No baseline mapping configured for {depth} + {undertone}"}
-            
-        row = matched_row.iloc[0]
-        
-        recommendations = {
+
+            depth_order = [
+                "Fair",
+                "Light-Medium",
+                "Medium",
+                "Tan",
+                "Deep"
+            ]
+
+            if depth not in depth_order:
+                return {
+                    "status": "error",
+                    "message": f"Unknown depth category: {depth}"
+                }
+
+            target_idx = depth_order.index(depth)
+
+            same_undertone_rows = self.lookup_df[
+                self.lookup_df["undertone"].str.strip() == undertone
+            ]
+
+            if same_undertone_rows.empty:
+                return {
+                    "status": "error",
+                    "message": (
+                        f"No recommendations available "
+                        f"for undertone '{undertone}'"
+                    )
+                }
+
+            best_row = None
+            best_distance = float("inf")
+
+            for _, row in same_undertone_rows.iterrows():
+
+                candidate_depth = str(row["depth"]).strip()
+
+                if candidate_depth not in depth_order:
+                    continue
+
+                candidate_idx = depth_order.index(candidate_depth)
+
+                distance = abs(candidate_idx - target_idx)
+
+                if distance < best_distance:
+                    best_distance = distance
+                    best_row = row
+
+            if best_row is None:
+                return {
+                    "status": "error",
+                    "message": (
+                        f"No suitable fallback found for "
+                        f"{depth} + {undertone}"
+                    )
+                }
+
+            row = best_row
+
+            note = (
+                f"Exact profile not found. "
+                f"Using nearest available depth match "
+                f"({row['depth']})."
+            )
+
+        else:
+            row = matched_row.iloc[0]
+            note = ""
+
+        return {
             "status": "success",
-            "profile": {"depth": depth, "undertone": undertone},
+            "profile": {
+                "depth": depth,
+                "undertone": undertone
+            },
             "matches": {
-                "Kay Beauty": self.get_shade_details(row['kay_beauty_match']),
-                "Maybelline Fit Me": self.get_shade_details(row['maybelline_match']),
-                "Lakme Powerplay": self.get_shade_details(row['lakme_match'])
-            }
+                "Kay Beauty": self.get_shade_details(
+                    row["kay_beauty_match"]
+                ),
+                "Maybelline Fit Me": self.get_shade_details(
+                    row["maybelline_match"]
+                ),
+                "Lakme Powerplay": self.get_shade_details(
+                    row["lakme_match"]
+                )
+            },
+            "note": note
         }
-        
-        return recommendations
+
 
 if __name__ == "__main__":
+
     try:
         recommender = FoundationRecommender()
+
         test_depth = "Medium"
         test_undertone = "Olive"
-        
-        print(f" Testing lookup logic using your database for: {test_depth} skin with {test_undertone} undertones...")
-        results = recommender.get_recommendations(test_depth, test_undertone)
-        
+
+        print(
+            f"Testing lookup logic for: "
+            f"{test_depth} skin with "
+            f"{test_undertone} undertones..."
+        )
+
+        results = recommender.get_recommendations(
+            test_depth,
+            test_undertone
+        )
+
         if results["status"] == "success":
-            print("\n Found matches successfully:")
+
+            print("\nRecommendations found:\n")
+
             for brand, specs in results["matches"].items():
-                print(f"🔹 {brand}: Shade {specs['shade_code']} ({specs['shade_name']})")
+
+                print(
+                    f"🔹 {brand}: "
+                    f"{specs['shade_code']} "
+                    f"({specs['shade_name']})"
+                )
+
+            if results["note"]:
+                print("\nFallback Note:")
+                print(results["note"])
+
         else:
             print(results["message"])
+
     except Exception as e:
         print(f"Error executing recommender: {e}")
