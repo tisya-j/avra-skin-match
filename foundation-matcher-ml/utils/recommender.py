@@ -1,11 +1,14 @@
 import pandas as pd
+
 import os
 
 class FoundationRecommender:
-    def __init__(self, master_db_path="data/Foundation_shades.csv", lookup_path="data/Recommendation_lookup.csv"):
-        self.master_db_path = master_db_path
-        self.lookup_path = lookup_path
+    def __init__(self, master_db_path=None, lookup_path=None):
+        # Dynamically locate the data folder relative to this file's directory
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
+        self.master_db_path = master_db_path if master_db_path else os.path.join(base_dir, "data", "Foundation_shades.csv")
+        self.lookup_path = lookup_path if lookup_path else os.path.join(base_dir, "data", "Recommendation_lookup.csv")
         # Load the CSV dataframes safely
         if not os.path.exists(self.master_db_path) or not os.path.exists(self.lookup_path):
             raise FileNotFoundError(
