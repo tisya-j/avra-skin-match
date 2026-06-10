@@ -1,0 +1,33 @@
+depth,undertone,kay_beauty_match,maybelline_match,lakme_match
+
+Fair,Cool Pink,KB_100P,MFM_115,LP_C140
+Fair,Cool Neutral,KB_110N,MFM_115,LP_C140
+Fair,Neutral,KB_110N,MFM_118,LP_N150
+Fair,Neutral Warm,KB_105Y,MFM_128,LP_W110
+Fair,Warm Golden,KB_105Y,MFM_128,LP_W110
+Fair,Olive,KB_110N,MFM_220,LP_N150
+Fair,Warm Olive,KB_120Y,MFM_228,LP_W120
+
+Medium,Cool Pink,KB_140P,MFM_115,LP_W160
+Medium,Cool Neutral,KB_135N,MFM_230,LP_N200
+Medium,Neutral,KB_135N,MFM_230,LP_N200
+Medium,Neutral Warm,KB_145N,MFM_220,LP_N220
+Medium,Warm Golden,KB_125Y,MFM_310,LP_W160
+Medium,Olive,KB_145N,MFM_220,LP_W240
+Medium,Warm Olive,KB_130Y,MFM_228,LP_W240
+
+Tan,Cool Pink,KB_160P,MFM_230,LP_C280
+Tan,Cool Neutral,KB_165N,MFM_230,LP_C280
+Tan,Neutral,KB_150N,MFM_230,LP_N260
+Tan,Neutral Warm,KB_165N,MFM_310,LP_N260
+Tan,Warm Golden,KB_155Y,MFM_310,LP_W230
+Tan,Olive,KB_165N,MFM_220,LP_W240
+Tan,Warm Olive,KB_170Y,MFM_228,LP_W240
+
+Deep,Cool Pink,KB_185P,MFM_332,LP_C380
+Deep,Cool Neutral,KB_175N,MFM_332,LP_C300
+Deep,Neutral,KB_175N,MFM_332,LP_N340
+Deep,Neutral Warm,KB_195N,MFM_332,LP_N340
+Deep,Warm Golden,KB_180Y,MFM_332,LP_W320
+Deep,Olive,KB_195N,MFM_332,LP_N360
+Deep,Warm Olive,KB_190Y,MFM_332,LP_W320
