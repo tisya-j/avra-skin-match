@@ -192,16 +192,30 @@ Distance-based retrieval:
 
 ---
 
+
+
 ## Project Structure
 
+```text
 avra/
-├── cv_pipeline.py        # Face detection + skin sampling
-├── colour_analyzer.py    # LAB extraction + aggregation
-├── matcher.py            # Distance ranking + bias correction
-├── foundation_db.csv     # Shade database
-├── app.py                # Gradio interface
-└── assets/
-    └── demo.gif
+│
+├── .gitattributes                 # Git attributes and file handling rules
+├── .gitignore                     # Ignored files and directories
+├── app.py                         # Gradio web application
+├── README.md                      # Project documentation
+├── requirements.txt               # Python dependencies
+├── test_env.py                    # Environment validation script
+│
+├── data/
+│   ├── Foundation_shades.csv
+│   ├── Foundation_shades_with_LAB.csv
+│   └── Recommendation_lookup.csv
+│
+└── utils/
+    ├── cv_pipeline.py             # MediaPipe face detection and skin sampling
+    ├── colour_analyzer.py         # LAB extraction, depth and undertone analysis
+    └── recommender.py             # Foundation retrieval and ranking engine
+```
 
 ---
 
