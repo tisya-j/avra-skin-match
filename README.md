@@ -1,3 +1,16 @@
+---
+title: Avra Shade Matcher
+emoji: 🧪
+colorFrom: purple
+colorTo: indigo
+sdk: gradio
+sdk_version: 5.7.1
+python_version: '3.10'
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # Avra
 
 **AI-powered foundation shade matcher for Indian skin tones**
