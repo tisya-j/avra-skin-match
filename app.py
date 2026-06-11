@@ -142,11 +142,26 @@ def process_pipeline(input_files):
             hex_color = "#cccccc"
 
         swatch_html = f"""
-        <div style='display: flex; align-items: center; gap: 12px; margin-top: 10px;'>
-            <div style='width: 45px; height: 45px; background-color: {hex_color}; border-radius: 8px; border: 2px solid #ddd;'></div>
-            <p style='margin: 0; font-size: 14px;'><b>Estimated Skin Swatch:</b> {hex_color}</p>
-        </div>
-        """
+<div style='
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-top:12px;
+    margin-bottom:18px;
+'>
+    <div style='
+        width:60px;
+        height:60px;
+        background-color:{hex_color};
+        border-radius:10px;
+        border:2px solid #ddd;
+    '></div>
+
+    <p style='margin:0;font-size:16px;'>
+        <b>Estimated Skin Swatch:</b> {hex_color}
+    </p>
+</div>
+"""
 
         card1_md = f"""
         ### Card 1 -- Skin Profile
@@ -179,28 +194,126 @@ def process_pipeline(input_files):
     except Exception as e:
         return f"Error: Backend Pipeline Failure: {str(e)}", "", "", "", None
 
-with gr.Blocks(theme=gr.themes.Base()) as demo:
-    gr.Markdown("# Avra")
-    gr.Markdown("### An AI-powered computer vision foundation shade matcher engineered specifically for Indian skin tones.")
-    
-    with gr.Row():
-        with gr.Column(scale=1):
-            user_images = gr.File(file_count="multiple", file_types=["image"], label="Upload 2-4 Selfies together")
-            submit_btn = gr.Button("Calibrate My True Skin Tone", variant="primary")
-            gr.Markdown("### Face Detection Tracking Mesh")
-            debug_preview = gr.Image(label="MediaPipe Sample Regions (First Photo)", interactive=False)
+css = """
 
+#debug_img img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+
+.gradio-container {
+    max-width: 1800px !important;
+}
+
+/* Main content row */
+.main-row {
+    height: 84vh;
+}
+
+/* Typography */
+.markdown {
+    font-size: 16px !important;
+    line-height: 1.55 !important;
+}
+
+.markdown h1 {
+    font-size: 40px !important;
+}
+
+.markdown h3 {
+    font-size: 22px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Face preview */
+#debug_img {
+    height: 58vh !important;
+}
+
+/* Results panel */
+.results-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding-left: 12px;
+}
+
+/* Better spacing */
+.results-panel ul {
+    line-height: 1.6;
+}
+
+button {
+    font-size: 16px !important;
+}
+"""
+
+with gr.Blocks(
+    theme=gr.themes.Base(),
+    css=css
+) as demo:
+    gr.Markdown("# Avra")
+    gr.Markdown(
+        "### An AI-powered computer vision foundation shade matcher engineered specifically for Indian skin tones."
+    )
+
+    with gr.Row():
+
+        # LEFT HALF
         with gr.Column(scale=1):
-            output_card1 = gr.Markdown("### Card 1 -- Skin Profile\nAwaiting your photo inputs...")
+
+            user_images = gr.File(
+                file_count="multiple",
+                file_types=["image"],
+                label="Upload 2-4 Selfies together"
+            )
+
+            submit_btn = gr.Button(
+                "Calibrate My True Skin Tone",
+                variant="primary"
+            )
+
+            gr.Markdown("### Face Detection Tracking Mesh")
+
+            debug_preview = gr.Image(
+                label="MediaPipe Sample Regions (First Photo)",
+                interactive=False,
+                elem_id="debug_img",
+                height=500
+            )
+
+        # RIGHT HALF
+        with gr.Column(scale=1):
+
+            output_card1 = gr.Markdown(
+                "### Card 1 -- Skin Profile\nAwaiting your photo inputs..."
+            )
+
             swatch_preview = gr.HTML("")
-            output_card2 = gr.Markdown("### Card 2 -- Foundation Matches\nAwaiting structural extraction results...")
-            output_card3 = gr.Markdown("### Card 3 -- Undertone Explanation\nAwaiting skin analysis parameters...")
+
+            output_card2 = gr.Markdown(
+                "### Card 2 -- Foundation Matches\nAwaiting structural extraction results..."
+            )
+
+            output_card3 = gr.Markdown(
+                "### Card 3 -- Undertone Explanation\nAwaiting skin analysis parameters..."
+            )
 
     submit_btn.click(
         fn=process_pipeline,
         inputs=[user_images],
-        outputs=[output_card1, swatch_preview, output_card2, output_card3, debug_preview]
+        outputs=[
+            output_card1,
+            swatch_preview,
+            output_card2,
+            output_card3,
+            debug_preview
+        ]
     )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860
+    )
